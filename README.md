@@ -1,1 +1,1 @@
-# audiostream-visualizer
+React-based audiostream visualizer (for kzsc)
