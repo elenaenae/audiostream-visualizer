@@ -1,4 +1,3 @@
-import logo from './logo.svg';
 import './App.css';
 import { useEffect, useState } from 'react';
 
@@ -25,7 +24,8 @@ const useMusic = url => {
       let anal = aCtx.createAnalyser();
       aSource.connect(anal);
       anal.connect(aCtx.destination);
-      anal.fftSize = 256;
+      anal.fftSize = 512;
+      anal.smoothingTimeConstant = 0.7;
 
       setAudioSource(aSource);
       setAnalyser(anal);
@@ -73,17 +73,33 @@ const VisualiserBar = (props) => {
       let dArr = new Uint8Array(bufferLength);
       props.analyser.getByteFrequencyData(dArr);
       setDataArray(dArr);
-      let graph = []
+      let avgarr = new Uint8Array(dArr);
+      let graph = [];
       let inRad = 3;
       let outRad = 12;
+      let smoothingSteps = 1;
+      let smoothingRadius = 3;
+
+      for(let j=0;j<smoothingSteps;j++){
+        let temp = new Uint8Array(avgarr)
+        for(let i=0;i<steps;i++){
+          let local = []
+          for(let k=i-smoothingRadius; k<=i+smoothingRadius; k++){
+            local.push(k>0 ? (k < 127 ? temp[k] : temp[k-127]) : temp[127+k])
+          }
+          temp[i] = local.reduce((sum, v) => sum + v, 0) / (1 + smoothingRadius * 2);
+        }
+        avgarr = temp;
+      }
       
       for(let i=0;i<steps;i++){
         let xangle = angleArray[i][0];
         let yangle = angleArray[i][1];
-        graph.push(<line key={"viz"+i} x1={inRad*xangle} y1={inRad*yangle} x2={(dArr[i]/256)*(outRad)*xangle} y2={(dArr[i]/256)*(outRad)*yangle}/>)
+        let localAvg = avgarr[i];
+        graph.push(<line key={"viz"+i} x1={inRad*xangle} y1={inRad*yangle} x2={(inRad + (localAvg/256)*(outRad-inRad))*xangle} y2={(inRad + (localAvg/256)*(outRad-inRad))*yangle}/>)
       }
       setVisArray(graph);
-    }, 50)
+    }, 30)
   }, [])
 
   return (
