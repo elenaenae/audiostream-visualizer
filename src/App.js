@@ -1,7 +1,7 @@
-import './App.css';
-import { useEffect, useState } from 'react';
+import "./App.css";
+import { useEffect, useState } from "react";
 
-const useMusic = url => {
+const useMusic = (url) => {
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.5);
   const [initialized, setInitialized] = useState(false);
@@ -14,9 +14,9 @@ const useMusic = url => {
   const [analyser, setAnalyser] = useState();
 
   const togglePlaying = () => {
-    if(!initialized){
-      const audio = document.getElementById('audio');
-      let aCtx = new (window.AudioContext || window.webkitAudioContext)()
+    if (!initialized) {
+      const audio = document.getElementById("audio");
+      let aCtx = new (window.AudioContext || window.webkitAudioContext)();
 
       audio.play();
       setAudioCtx(aCtx);
@@ -29,44 +29,54 @@ const useMusic = url => {
 
       setAudioSource(aSource);
       setAnalyser(anal);
-      
+
       setInitialized(true);
       setPlaying(true);
     } else {
       setPlaying(!playing);
     }
-  }
+  };
 
   useEffect(() => {
-    const audio = document.getElementById('audio');
+    const audio = document.getElementById("audio");
     playing ? audio.play() : audio.pause();
 
     console.log(playing);
   }, [playing]);
 
   useEffect(() => {
-    const audio = document.getElementById('audio');
+    const audio = document.getElementById("audio");
     audio.volume = volume;
-  }, [volume])
+  }, [volume]);
 
-  return [playing, togglePlaying, setVolume, audioSource, analyser, initialized];
-}
+  return [
+    playing,
+    togglePlaying,
+    setVolume,
+    audioSource,
+    analyser,
+    initialized,
+  ];
+};
 
 const VisualiserBar = (props) => {
-  const [bufferLength, setBufferLength] = useState(props.analyser.frequencyBinCount);
-  const [dataArray, setDataArray] = useState(new Uint8Array(props.analyser.frequencyBinCount));
-  const [visArray, setVisArray] = useState([])
-  let angles = []
+  const [bufferLength, setBufferLength] = useState(
+    props.analyser.frequencyBinCount
+  );
+  const [dataArray, setDataArray] = useState(
+    new Uint8Array(props.analyser.frequencyBinCount)
+  );
+  const [visArray, setVisArray] = useState([]);
+  let angles = [];
   const steps = 128;
   const [angleArray, setAngleArray] = useState(() => {
-
-    for(let i=0; i<steps;i++){
-      let xangle = Math.cos((Math.PI * 2 * (i/(steps-1))) - Math.PI/2)
-      let yangle = Math.sin((Math.PI * 2 * (i/(steps-1))) - Math.PI/2)
-      angles.push([xangle, yangle])
+    for (let i = 0; i < steps; i++) {
+      let xangle = Math.cos(Math.PI * 2 * (i / (steps - 1)) - Math.PI / 2);
+      let yangle = Math.sin(Math.PI * 2 * (i / (steps - 1)) - Math.PI / 2);
+      angles.push([xangle, yangle]);
     }
-    return angles
-  })
+    return angles;
+  });
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -80,106 +90,138 @@ const VisualiserBar = (props) => {
       let smoothingSteps = 1;
       let smoothingRadius = 3;
 
-      for(let j=0;j<smoothingSteps;j++){
-        let temp = new Uint8Array(avgarr)
-        for(let i=0;i<steps;i++){
-          let local = []
-          for(let k=i-smoothingRadius; k<=i+smoothingRadius; k++){
-            local.push(k>0 ? (k < 127 ? temp[k] : temp[k-127]) : temp[127+k])
-          }
-          temp[i] = local.reduce((sum, v) => sum + v, 0) / (1 + smoothingRadius * 2);
+      for (let j = 0; j < smoothingSteps; j++) {
+        let temp = new Uint8Array(avgarr);
+        let sum = avgarr[0];
+        let pts = 1 + smoothingRadius * 2;
+        for (let i = 1; i <= smoothingRadius; i++) {
+          sum += avgarr[steps - i];
+          sum += avgarr[i];
+        }
+        temp[0] = sum / pts;
+        for (let i = 1; i < steps; i++) {
+          sum += avgarr[(i + smoothingRadius) % steps];
+          sum -= avgarr[(steps + i - smoothingRadius) % steps];
+          temp[i] = sum / pts;
         }
         avgarr = temp;
       }
-      
-      for(let i=0;i<steps;i++){
+
+      for (let i = 0; i < steps; i++) {
         let xangle = angleArray[i][0];
         let yangle = angleArray[i][1];
         let localAvg = avgarr[i];
-        graph.push(<line key={"viz"+i} x1={inRad*xangle} y1={inRad*yangle} x2={(inRad + (localAvg/256)*(outRad-inRad))*xangle} y2={(inRad + (localAvg/256)*(outRad-inRad))*yangle}/>)
+        graph.push(
+          <line
+            key={"viz" + i}
+            x1={inRad * xangle}
+            y1={inRad * yangle}
+            x2={(inRad + (localAvg / 256) * (outRad - inRad)) * xangle}
+            y2={(inRad + (localAvg / 256) * (outRad - inRad)) * yangle}
+          />
+        );
       }
       setVisArray(graph);
-    }, 30)
-  }, [])
+    }, 30);
+  }, []);
 
-  return (
-    <g className='visualizer'>
-      {visArray}
-    </g>
-  )
-}
+  return <g className="visualizer">{visArray}</g>;
+};
 
 const App = () => {
-
-  const [getAngle, setAngle] = useState(Math.PI*0.5);
+  const [getAngle, setAngle] = useState(Math.PI * 0.5);
   const [getClicked, setClicked] = useState(null);
-  const [audio, togglePlay, setVolume, audioSource, analyser, initialized] = useMusic("https://kzscfms1-geckohost.radioca.st/kzschigh");
+  const [audio, togglePlay, setVolume, audioSource, analyser, initialized] =
+    useMusic("https://kzscfms1-geckohost.radioca.st/kzschigh");
   // const [audioctx] = useState(new AudioContext());
   // const [audiosource] = useState(audioCtx.createMediaElementSource())
 
-  const volSlider = []
+  const volSlider = [];
   const [varray, setVarray] = useState(() => {
     // lol why am i doing this this way? not sure but it works :) plus i can always edit it later
     let inRad = 3.5;
     let outRad = 4.6;
     let steps = 12;
-    for(let i=0;i<steps;i++){
-      let xangle = Math.cos(-Math.PI/4 + (Math.PI/2 * (i/(steps-1))))
-      let yangle = Math.sin(-Math.PI/4 + (Math.PI/2 * (i/(steps-1))))
-      volSlider.push(<line key={"vol"+i} x1={inRad*xangle} y1={inRad*yangle} x2={(outRad-(i/(steps-1)))*xangle} y2={(outRad-(i/(steps-1)))*yangle}/>)
+    for (let i = 0; i < steps; i++) {
+      let xangle = Math.cos(-Math.PI / 4 + (Math.PI / 2) * (i / (steps - 1)));
+      let yangle = Math.sin(-Math.PI / 4 + (Math.PI / 2) * (i / (steps - 1)));
+      volSlider.push(
+        <line
+          key={"vol" + i}
+          x1={inRad * xangle}
+          y1={inRad * yangle}
+          x2={(outRad - i / (steps - 1)) * xangle}
+          y2={(outRad - i / (steps - 1)) * yangle}
+        />
+      );
     }
     return volSlider;
-  })
+  });
 
   const rotateKnob = (e) => {
-    if(!getClicked){
-      return
+    if (!getClicked) {
+      return;
     }
 
-    let relativeMousePos = [e.nativeEvent.offsetX - 256, e.nativeEvent.offsetY - 256];
+    let relativeMousePos = [
+      e.nativeEvent.offsetX - 256,
+      e.nativeEvent.offsetY - 256,
+    ];
     let angle = Math.atan2(...relativeMousePos);
-    let percent = (angle-(Math.PI * 0.26))/(Math.PI * 0.5)
-    if(percent < 0){
+    let percent = (angle - Math.PI * 0.26) / (Math.PI * 0.5);
+    if (percent < 0) {
       percent = 0;
     }
-    
-    if(Math.PI * 0.25 < angle && angle < Math.PI * 0.75){
+
+    if (Math.PI * 0.25 < angle && angle < Math.PI * 0.75) {
       setAngle(Math.atan2(...relativeMousePos));
       setVolume(percent);
     }
-  }
-  
+  };
+
   useEffect(() => {
     // const audioCtx = new(window.AudioContext || window.webkitAudioContext)();
-  }, [])
+  }, []);
 
   return (
     <div className="App">
-      <audio id='audio' hidden src='https://kzscfms1-geckohost.radioca.st/kzschigh' preload='auto' crossOrigin='anonymous'/>
-      <svg viewBox='-12 -12 24 24' className='dial' onMouseDown={() => setClicked(true)} onMouseUp={() => setClicked(null)} onMouseLeave={() => setClicked(null)} onMouseMove={rotateKnob}>
-        <defs>
-          
-        </defs>
+      <audio
+        id="audio"
+        hidden
+        src="https://kzscfms1-geckohost.radioca.st/kzschigh"
+        preload="auto"
+        crossOrigin="anonymous"
+      />
+      <svg
+        viewBox="-12 -12 24 24"
+        className="dial"
+        onMouseDown={() => setClicked(true)}
+        onMouseUp={() => setClicked(null)}
+        onMouseLeave={() => setClicked(null)}
+        onMouseMove={rotateKnob}
+      >
+        <defs></defs>
         {/* <g className='background'>
           <circle cx='0' cy='0' r='12'/>
         </g> */}
-        {initialized && <VisualiserBar analyser={analyser}/>}
-        <g className='knob' >
-          <circle cx='0' cy='0' r='3'/>
-          <g className='dot'>
-            <circle cx ={Math.sin(getAngle) * 2.5} cy={Math.cos(getAngle) * 2.5} r='0.15'/>
+        {initialized && <VisualiserBar analyser={analyser} />}
+        <g className="knob">
+          <circle cx="0" cy="0" r="3" />
+          <g className="dot">
+            <circle
+              cx={Math.sin(getAngle) * 2.5}
+              cy={Math.cos(getAngle) * 2.5}
+              r="0.15"
+            />
           </g>
         </g>
-        <g className='play' onClick={() => togglePlay()}>
-          <circle cx='0' cy='0' r='1.5'/>
-          
+        <g className="play" onClick={() => togglePlay()}>
+          <circle cx="0" cy="0" r="1.5" />
         </g>
-        <g className='volume'>
-          {varray}
-        </g>
+        <g className="volume">{varray}</g>
       </svg>
     </div>
   );
-}
+};
 
 export default App;
